@@ -1,9 +1,0 @@
-import numpy as np
-import cv2
-
-# Create a 200x200 red square on a white background
-image = np.ones((300, 300, 3), dtype=np.uint8) * 255
-cv2.rectangle(image, (50, 50), (250, 250), (0, 0, 255), -1)  # Red square
-
-# Save the image
-cv2.imwrite("data/sample.jpg", image)
