@@ -1,1 +1,2 @@
-# Afterimage Simulation
+# Photoreceptor Eye Model
+
