@@ -1,3 +1,13 @@
-numpy
-opencv-python
-matplotlib
+# Core Libraries
+numpy>=1.21.0               # Array operations and scientific computing
+opencv-python>=4.5.0        # Image processing
+matplotlib>=3.4.0           # Visualization and plotting
+
+# Optional Utilities (if needed later)
+scipy>=1.7.0                # Additional scientific computing utilities
+tqdm>=4.60.0                # Progress bars for long-running operations
+jupyterlab>=4.0.0           # Interactive notebooks for experimentation
+
+# Documentation
+sphinx>=7.0.0               # Documentation generator
+sphinx-rtd-theme>=1.2.0     # ReadTheDocs theme for documentation
