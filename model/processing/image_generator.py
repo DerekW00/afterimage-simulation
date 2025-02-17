@@ -3,82 +3,178 @@ import os
 import cv2
 import numpy as np
 
-from model.model_config import ModelConfig
 
+# --- Step 1: Extract Frames from Video ---
 
-def generate_test_frames(output_dir=None, frame_count=30, image_size=(500, 500)):
+def extract_frames(video_path, output_dir, fps_target=None):
     """
-    Generate a sequence of synthetic, colored test frames.
-
-    The generated frames include:
-      - A two-dimensional gradient background.
-      - A moving circle whose center moves in a sine/cosine pattern.
-      - The circle’s color smoothly cycles through red, green, and blue.
-
-    These frames provide rich color content for subsequent afterimage processing.
+    Extract frames from a video file and save them as JPEG images.
 
     Parameters:
-        output_dir (str): Directory to save the frames.
-                          Defaults to ModelConfig.DEFAULT_INPUT_DIR if not provided.
-        frame_count (int): Number of frames to generate.
-        image_size (tuple): Dimensions of each frame (height, width).
+      video_path (str): Path to the input video file.
+      output_dir (str): Directory to save extracted frames.
+      fps_target (float, optional): Target FPS for extraction (if None, use the video's native FPS).
     """
-    if output_dir is None:
-        output_dir = ModelConfig.DEFAULT_INPUT_DIR
+    os.makedirs(output_dir, exist_ok=True)
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise IOError(f"Cannot open video {video_path}")
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps_target is None:
+        fps_target = video_fps
+    # Calculate frame interval
+    frame_interval = int(round(video_fps / fps_target))
+    frame_count = 0
+    saved_count = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_count % frame_interval == 0:
+            filename = os.path.join(output_dir, f"frame_{saved_count:04d}.jpg")
+            cv2.imwrite(filename, frame)
+            print(f"Extracted frame {saved_count}: {filename}")
+            saved_count += 1
+        frame_count += 1
+    cap.release()
+    print(f"Extraction complete. {saved_count} frames saved in '{output_dir}'.")
+
+
+# --- Step 2: Generate Afterimage Frames ---
+
+def generate_afterimage_frame(frame):
+    """
+    Generate an afterimage effect for a single frame.
+
+    Here we use a simple inversion as an example.
+    In your model, replace this with your more advanced processing.
+
+    Parameters:
+      frame (np.ndarray): Original frame (BGR format).
+
+    Returns:
+      np.ndarray: Afterimage frame (BGR format).
+    """
+    # Example: invert colors for afterimage effect.
+    return cv2.bitwise_not(frame)
+
+
+def generate_afterimage_frames(input_dir, afterimage_dir):
+    """
+    Process all frames in input_dir to generate corresponding afterimage frames.
+    """
+    os.makedirs(afterimage_dir, exist_ok=True)
+    frame_files = sorted([f for f in os.listdir(input_dir) if f.lower().endswith('.jpg')])
+    for i, fname in enumerate(frame_files):
+        input_path = os.path.join(input_dir, fname)
+        frame = cv2.imread(input_path)
+        if frame is None:
+            print(f"Skipping {fname}: unable to read.")
+            continue
+        afterimage = generate_afterimage_frame(frame)
+        output_path = os.path.join(afterimage_dir, fname)
+        cv2.imwrite(output_path, afterimage)
+        print(f"Generated afterimage frame {i + 1}/{len(frame_files)}: {output_path}")
+    print(f"Afterimage frame generation complete. Frames saved in '{afterimage_dir}'.")
+
+
+# --- Step 3: Generate Videos from Frames ---
+
+def generate_videos(original_dir, afterimage_dir, output_dir, fps=30, alpha=0.5):
+    """
+    Generate four videos from the original and afterimage frames:
+      1. Original Video
+      2. Afterimage Video
+      3. Blended Video (input blended with afterimage)
+      4. Side-by-Side Comparison Video (original and blended horizontally)
+
+    Parameters:
+      original_dir (str): Folder with original frames.
+      afterimage_dir (str): Folder with afterimage frames.
+      output_dir (str): Folder to save the videos.
+      fps (int): Frames per second for the videos.
+      alpha (float): Blending weight for the original (0 < alpha <= 1).
+    """
     os.makedirs(output_dir, exist_ok=True)
 
-    height, width = image_size
+    original_frames = sorted([f for f in os.listdir(original_dir) if f.lower().endswith('.jpg')])
+    afterimage_frames = sorted([f for f in os.listdir(afterimage_dir) if f.lower().endswith('.jpg')])
 
-    # Create a horizontal and vertical gradient background.
-    x_grad = np.tile(np.linspace(0, 255, width, dtype=np.uint8), (height, 1))
-    y_grad = np.tile(np.linspace(0, 255, height, dtype=np.uint8), (width, 1)).T
-    # Construct a background: R from x gradient, G from y gradient, B as average.
-    background = np.stack([
-        x_grad,
-        y_grad,
-        ((x_grad.astype(np.uint16) + y_grad.astype(np.uint16)) // 2).astype(np.uint8)
-    ], axis=2)
+    if not original_frames or not afterimage_frames:
+        print("No frames found in one or both directories.")
+        return
 
-    # Loop to generate frames.
+    frame_count = min(len(original_frames), len(afterimage_frames))
+    # Read first frame to determine dimensions (assume both sets have same dimensions)
+    first_frame = cv2.imread(os.path.join(original_dir, original_frames[0]))
+    height, width, _ = first_frame.shape
+
+    # Define output video file paths.
+    original_video_path = os.path.join(output_dir, "original_video.mp4")
+    afterimage_video_path = os.path.join(output_dir, "afterimage_video.mp4")
+    blended_video_path = os.path.join(output_dir, "blended_video.mp4")
+    side_by_side_video_path = os.path.join(output_dir, "side_by_side_video.mp4")
+
+    # Define codec (using H.264 via 'avc1' if available)
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    original_video = cv2.VideoWriter(original_video_path, fourcc, fps, (width, height))
+    afterimage_video = cv2.VideoWriter(afterimage_video_path, fourcc, fps, (width, height))
+    blended_video = cv2.VideoWriter(blended_video_path, fourcc, fps, (width, height))
+    side_by_side_video = cv2.VideoWriter(side_by_side_video_path, fourcc, fps, (width * 2, height))
+
     for i in range(frame_count):
-        # Start with a copy of the gradient background.
-        frame = background.copy()
+        orig_path = os.path.join(original_dir, original_frames[i])
+        af_path = os.path.join(afterimage_dir, afterimage_frames[i])
+        orig_frame = cv2.imread(orig_path)
+        af_frame = cv2.imread(af_path)
+        if orig_frame is None or af_frame is None:
+            print(f"Skipping frame {i + 1} due to read error.")
+            continue
 
-        # Calculate a moving circle center.
-        center_x = int(width / 2 + (width / 3) * np.sin(2 * np.pi * i / frame_count))
-        center_y = int(height / 2 + (height / 4) * np.cos(2 * np.pi * i / frame_count))
-        radius = 50
+        # Generate blended frame.
+        blended = cv2.addWeighted(orig_frame, alpha, af_frame, 1 - alpha, 0)
+        # Generate side-by-side frame (stack horizontally).
+        side_by_side = np.hstack((orig_frame, blended))
 
-        # Cycle through colors smoothly using sine functions.
-        red = int(127 * (np.sin(2 * np.pi * i / frame_count) + 1))
-        green = int(127 * (np.sin(2 * np.pi * i / frame_count + 2 * np.pi / 3) + 1))
-        blue = int(127 * (np.sin(2 * np.pi * i / frame_count + 4 * np.pi / 3) + 1))
-        # OpenCV uses BGR order.
-        circle_color = (blue, green, red)
+        # Write to videos.
+        original_video.write(orig_frame)
+        afterimage_video.write(af_frame)
+        blended_video.write(blended)
+        side_by_side_video.write(side_by_side)
 
-        cv2.circle(frame, (center_x, center_y), radius, circle_color, -1)
+        print(f"Processed frame {i + 1}/{frame_count}")
 
-        # Optionally: you can add more elements here (e.g. additional shapes, noise, etc.)
+    original_video.release()
+    afterimage_video.release()
+    blended_video.release()
+    side_by_side_video.release()
 
-        filename = os.path.join(output_dir, f"frame_{i:04d}.jpg")
-        cv2.imwrite(filename, frame)
-        print(f"Generated frame {i + 1}/{frame_count}: {filename}")
+    print("Videos generated successfully:")
+    print("  Original Video:", original_video_path)
+    print("  Afterimage Video:", afterimage_video_path)
+    print("  Blended Video:", blended_video_path)
+    print("  Side-by-Side Video:", side_by_side_video_path)
 
-    print(f"Generated {frame_count} test frames in '{output_dir}'.")
 
+# --- Main Pipeline ---
 
 if __name__ == "__main__":
-    import argparse
+    # Define paths (adjust as needed)
+    video_path = "data/afterimage/2_video/IMG_1124.mov"
+    frames_dir = "data/afterimage/2_video/input"
+    afterimage_dir = "data/afterimage/2_video/afterimage"
+    videos_dir = "data/afterimage/2_video/output"
 
-    parser = argparse.ArgumentParser(description="Generate synthetic colored test frames for afterimage processing.")
-    parser.add_argument("--output_dir", default=None, help="Output directory (default: ModelConfig.DEFAULT_INPUT_DIR)")
-    parser.add_argument("--frame_count", type=int, default=30, help="Number of frames to generate")
-    parser.add_argument("--height", type=int, default=500, help="Frame height")
-    parser.add_argument("--width", type=int, default=500, help="Frame width")
-    args = parser.parse_args()
+    # Step 1: Extract frames from the input video.
+    print("Extracting frames...")
+    extract_frames(video_path, frames_dir, fps_target=15)
 
-    generate_test_frames(
-        output_dir=args.output_dir,
-        frame_count=args.frame_count,
-        image_size=(args.height, args.width)
-    )
+    # Step 2: Generate afterimage frames.
+    print("Generating afterimage frames...")
+    generate_afterimage_frames(frames_dir, afterimage_dir)
+
+    # Step 3: Generate 4 videos.
+    print("Generating videos...")
+    generate_videos(frames_dir, afterimage_dir, videos_dir, fps=15, alpha=0.5)
+
+    print("Video processing pipeline completed!")

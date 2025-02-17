@@ -1,5 +1,6 @@
 import numpy as np
-from pysilsub import SpectralSensitivities, Stimuli
+from pysilsub.observers import ColorimetricObserver
+from pysilsub.problems import SilentSubstitutionProblem
 
 
 def compute_photoreceptor_excitation(image: np.ndarray) -> np.ndarray:
@@ -8,20 +9,37 @@ def compute_photoreceptor_excitation(image: np.ndarray) -> np.ndarray:
 
     Parameters:
         image: np.ndarray
-            RGB image with values in [0,1].
+            RGB image with values in [0, 1].
 
     Returns:
-        np.ndarray: Excitation map with shape (H, W, 4) for L, M, S cones, and rods.
+        np.ndarray: Excitation map with shape (H, W, N) for N photoreceptor classes.
     """
-    ss = SpectralSensitivities(observer='CIE 2 Degree Standard Observer')
+    # Initialize observer and problem
+    observer = ColorimetricObserver(age=32, field_size=10)
+    ssp = SilentSubstitutionProblem.from_package_data('STLAB_1_York')
+    ssp.observer = observer
+
+    # Ensure all photoreceptors are accounted for before setting target_contrast
+    ssp.ignore = ['rh']  # Ignore rods
+    ssp.silence = ['mc', 'lc']  # Silence M and L cones
+    ssp.target = ['sc']  # Target S cones
+
+    # Now it's safe to set the target contrast
+    ssp.target_contrast = 0.2
+    ssp.background = [0.5] * ssp.nprimaries  # Set uniform background
+
+    # Prepare output array
     height, width, _ = image.shape
-    excitations = np.zeros((height, width, 4))
+    excitations = np.zeros((height, width, len(ssp.observer.photoreceptors)))
+
+    # Compute excitations
     for x in range(height):
         for y in range(width):
-            r, g, b = image[x, y]
-            stim = Stimuli({'R': r, 'G': g, 'B': b})
             try:
-                excitations[x, y] = ss.get_response(stim)
-            except AttributeError:
-                excitations[x, y] = ss.get_excitations(stim)
+                solution = ssp.linalg_solve()  # No arguments passed
+                excitations[x, y] = solution
+            except Exception as e:
+                print(f"Failed to compute excitation for pixel ({x},{y}): {e}")
+                excitations[x, y] = np.zeros(len(ssp.observer.photoreceptors))
+
     return excitations
