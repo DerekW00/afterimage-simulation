@@ -1,20 +1,20 @@
 from setuptools import setup, find_packages
 
+# Read dependencies from requirements.txt
+with open("requirements.txt") as f:
+    requirements = f.read().splitlines()
+
 setup(
     name='photoreceptor-eye-model',
-    version='0.1.0',  # Initial version
+    version='0.1.0',
     description='A Python implementation of a photoreceptor model for afterimage simulation and eye dynamics.',
     author='Derek W.',
     author_email='derekderuiwang@gmail.com',
     url='https://github.com/DerekW00/photoreceptor-eye-model',
-    packages=find_packages(where='.'),  # Automatically find all packages
-    package_dir={'': '.'},  # Packages are located in the current directory
+    packages=find_packages(where='.'),
+    package_dir={'': '.'},
     include_package_data=True,
-    install_requires=[
-        'numpy>=1.21.0',
-        'opencv-python>=4.5.0',
-        'matplotlib>=3.4.0',
-    ],
+    install_requires=requirements,  # Automatically populate from requirements.txt
     entry_points={
         'console_scripts': [
             'afterimage-sim=model.afterimage:main',

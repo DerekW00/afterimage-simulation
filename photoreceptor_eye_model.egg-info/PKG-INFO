@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: photoreceptor-eye-model
+Version: 0.1.0
+Summary: A Python implementation of a photoreceptor model for afterimage simulation and eye dynamics.
+Home-page: https://github.com/DerekW00/photoreceptor-eye-model
+Author: Derek W.
+Author-email: derekderuiwang@gmail.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Image Processing
+Requires-Python: >=3.9
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: opencv-python>=4.5.0
+Requires-Dist: matplotlib>=3.4.0
+Requires-Dist: pysilsub>=0.1.1
+Requires-Dist: scipy>=1.7.0
+Requires-Dist: tqdm>=4.60.0
+Requires-Dist: jupyterlab>=4.0.0
+Requires-Dist: sphinx>=7.0.0
+Requires-Dist: sphinx-rtd-theme>=1.2.0

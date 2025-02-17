@@ -1,0 +1,17 @@
+README.md
+setup.py
+./tests/__init__.py
+./tests/test_afterimage.py
+./tests/test_anatomical.py
+./tests/test_hdr_processing.py
+./tests/test_photoreceptor.py
+photoreceptor_eye_model.egg-info/PKG-INFO
+photoreceptor_eye_model.egg-info/SOURCES.txt
+photoreceptor_eye_model.egg-info/dependency_links.txt
+photoreceptor_eye_model.egg-info/entry_points.txt
+photoreceptor_eye_model.egg-info/requires.txt
+photoreceptor_eye_model.egg-info/top_level.txt
+tests/test_afterimage.py
+tests/test_anatomical.py
+tests/test_hdr_processing.py
+tests/test_photoreceptor.py

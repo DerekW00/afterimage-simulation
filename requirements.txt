@@ -2,6 +2,7 @@
 numpy>=1.21.0               # Array operations and scientific computing
 opencv-python>=4.5.0        # Image processing
 matplotlib>=3.4.0           # Visualization and plotting
+pysilsub>=0.1.1             # Custom library for image processing
 
 # Optional Utilities (if needed later)
 scipy>=1.7.0                # Additional scientific computing utilities
